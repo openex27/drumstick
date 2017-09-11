@@ -14,17 +14,17 @@ Implement crond by Golang
 ### 方法：
 
  - NewTask(time.Duration, function, ...param) (*Task, error)
-  - 创建任务对象,当周期时间小于等于0时返回错误，否则返回nil
-  - task, err := drumstick.NewTask(2*time.Second, func1, "hello", 1 ,2)
+   - 创建任务对象,当周期时间小于等于0时返回错误，否则返回nil
+   - task, err := drumstick.NewTask(2*time.Second, func1, "hello", 1 ,2)
  - (*Task) Start()
-  - 启动任务
-  - task.Start()
+   - 启动任务
+   - task.Start()
  - (*Task) Stop()
-  - 停止任务继续生产，即已经启动的任务不会被结束，而是关闭他的调度器不再生产新任务
-  - task.Stop()
+   - 停止任务继续生产，即已经启动的任务不会被结束，而是关闭他的调度器不再生产新任务
+   - task.Stop()
  - (*Task) Reset(time.Duration)
-  - 更新指定任务的周期时间
-  - task.Reset(1*time.Second)
+   - 更新指定任务的周期时间
+   - task.Reset(1*time.Second)
 
 ### 示例:
 ```
