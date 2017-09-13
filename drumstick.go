@@ -2,6 +2,7 @@ package drumstick
 
 import (
 	"errors"
+	//"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -22,7 +23,8 @@ type Task struct {
 	count     int64
 }
 
-func (t *Task) nextTime() time.Duration {
+func (t *Task) nextTime(doing <-chan struct{}) time.Duration {
+	<-doing
 	t.Lock()
 	defer t.Unlock()
 	nowTime := time.Now()
@@ -38,7 +40,13 @@ func (t *Task) nextTime() time.Duration {
 }
 
 func (t *Task) Start() {
-	go t.fn.Call(t.args)
+	doing := make(chan struct{})
+	go func() {
+		doing <- struct{}{}
+		t.fn.Call(t.args)
+
+	}()
+	<-doing
 	newTimeValue := t.period
 	t.startTime = time.Now()
 	t.count = 1
@@ -48,8 +56,12 @@ func (t *Task) Start() {
 			case <-t.Quit:
 				return
 			case <-time.After(newTimeValue):
-				go t.fn.Call(t.args)
-				newTimeValue = t.nextTime()
+				go func() {
+					doing <- struct{}{}
+					t.fn.Call(t.args)
+				}()
+				newTimeValue = t.nextTime(doing)
+				//fmt.Println(newTimeValue)
 			}
 		}
 	}()
