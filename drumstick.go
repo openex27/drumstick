@@ -83,6 +83,9 @@ func NewTask(period time.Duration, f interface{}, args ...interface{}) (*Task, e
 		return nil, errors.New("period is 0,it will crazy running")
 	}
 	newTask := new(Task)
+        if reflect.TypeOf(f).Kind() != reflect.Func {
+                return nil, errors.New("void interface delivered")
+        }
 	newTask.fn = reflect.ValueOf(f)
 	newTask.Quit = make(chan struct{}, 1)
 	newTask.period = period
