@@ -1,5 +1,10 @@
 package drumstick
 
+/*
+1.提供时间补偿机制，避免周期任务调度中时间损耗累计导致的长期使用后产生任务滞后现象
+2.参数可传入自定义函数, 和变长自定义参数
+3.未完待续...
+*/
 import (
 	"errors"
 	//"fmt"
@@ -39,6 +44,11 @@ func (t *Task) nextTime(doing <-chan struct{}) time.Duration {
 	return calResult
 }
 
+/*
+(*Task) Start()
+	启动任务
+	task.Start()
+*/
 func (t *Task) Start() {
 	doing := make(chan struct{})
 	go func() {
@@ -67,10 +77,20 @@ func (t *Task) Start() {
 	}()
 }
 
+/*
+(*Task) Stop()
+	停止任务继续生产，即已经启动的任务不会被结束，而是关闭他的调度器不再生产新任务
+	task.Stop()
+*/
 func (t *Task) Stop() {
 	t.Quit <- struct{}{}
 }
 
+/*
+(*Task) Reset(time.Duration)
+更新指定任务的周期时间
+task.Reset(1*time.Second)
+*/
 func (t *Task) Reset(newPeriod time.Duration) {
 	t.Lock()
 	defer t.Unlock()
@@ -78,14 +98,19 @@ func (t *Task) Reset(newPeriod time.Duration) {
 	t.pChange = true
 }
 
+/*
+NewTask(time.Duration, function, ...param) (*Task, error)
+创建任务对象,当周期时间小于等于0时返回错误，否则返回nil
+task, err := drumstick.NewTask(2*time.Second, func1, "hello", 1 ,2)
+*/
 func NewTask(period time.Duration, f interface{}, args ...interface{}) (*Task, error) {
 	if period <= 0 {
 		return nil, errors.New("period is 0,it will crazy running")
 	}
 	newTask := new(Task)
-        if reflect.TypeOf(f).Kind() != reflect.Func {
-                return nil, errors.New("void interface delivered")
-        }
+	if reflect.TypeOf(f).Kind() != reflect.Func {
+		return nil, errors.New("void interface delivered")
+	}
 	newTask.fn = reflect.ValueOf(f)
 	newTask.Quit = make(chan struct{}, 1)
 	newTask.period = period
