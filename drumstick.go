@@ -23,9 +23,22 @@ type Task struct {
 	Quit    chan struct{}
 	pChange bool
 	sync.Mutex
-	period    time.Duration
-	startTime time.Time
-	count     int64
+	setStartTime time.Time     //用户设定的起始时间
+	startTime    time.Time     //本次启动程序后任务首次调度的起始时间
+	period       time.Duration //执行周期
+	count        int64         //程序启动后的执行次数计数
+}
+
+/*
+通过用户设定的起始时间和执行周期计算当前周期的起始时间点
+如果用户设定的时间大于当前时间，则返回设定的起始时间
+*/
+func prevTime(setstarttime time.Time, period time.Duration) time.Time {
+	tmp := setstarttime //临时时间点
+	for tmp.Add(period).Before(time.Now()) {
+		tmp = tmp.Add(period)
+	}
+	return tmp
 }
 
 func (t *Task) nextTime(doing <-chan struct{}) time.Duration {
@@ -35,7 +48,8 @@ func (t *Task) nextTime(doing <-chan struct{}) time.Duration {
 	nowTime := time.Now()
 	if t.pChange == true {
 		t.pChange = false
-		t.startTime = nowTime
+		//t.startTime = nowTime
+		t.startTime = prevTime(t.setStartTime, t.period)
 		t.count = 1
 		return t.period
 	}
@@ -57,8 +71,10 @@ func (t *Task) Start() {
 
 	}()
 	<-doing
-	newTimeValue := t.period
-	t.startTime = time.Now()
+	//newTimeValue := t.period
+	//t.startTime = time.Now()
+	t.startTime = prevTime(t.setStartTime, t.period)
+	newTimeValue := t.startTime.Add(t.period).Sub(time.Now())
 	t.count = 1
 	go func() {
 		for {
@@ -69,9 +85,10 @@ func (t *Task) Start() {
 				go func() {
 					doing <- struct{}{}
 					t.fn.Call(t.args)
+					//fmt.Println("执行:", t.count, newTimeValue, time.Now())
 				}()
 				newTimeValue = t.nextTime(doing)
-				//fmt.Println(newTimeValue)
+
 			}
 		}
 	}()
@@ -91,9 +108,10 @@ func (t *Task) Stop() {
 更新指定任务的周期时间
 task.Reset(1*time.Second)
 */
-func (t *Task) Reset(newPeriod time.Duration) {
+func (t *Task) Reset(newStartTime time.Time, newPeriod time.Duration) {
 	t.Lock()
 	defer t.Unlock()
+	t.setStartTime = newStartTime
 	t.period = newPeriod
 	t.pChange = true
 }
@@ -103,7 +121,7 @@ NewTask(time.Duration, function, ...param) (*Task, error)
 创建任务对象,当周期时间小于等于0时返回错误，否则返回nil
 task, err := drumstick.NewTask(2*time.Second, func1, "hello", 1 ,2)
 */
-func NewTask(period time.Duration, f interface{}, args ...interface{}) (*Task, error) {
+func NewTask(startTime time.Time, period time.Duration, f interface{}, args ...interface{}) (*Task, error) {
 	if period <= 0 {
 		return nil, errors.New("period is 0,it will crazy running")
 	}
@@ -113,6 +131,7 @@ func NewTask(period time.Duration, f interface{}, args ...interface{}) (*Task, e
 	}
 	newTask.fn = reflect.ValueOf(f)
 	newTask.Quit = make(chan struct{}, 1)
+	newTask.setStartTime = startTime
 	newTask.period = period
 	tempA := []reflect.Value{}
 	for _, temp := range args {
