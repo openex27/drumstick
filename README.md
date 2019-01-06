@@ -35,7 +35,7 @@ import (
         "fmt"
         "time"
 
-        drum "github.com/bkzy-wangjp/drumstick"
+        drum "github.com/openex27/drumstick"
 )
 
 func sumEcho(s string, a, b int) {
